@@ -50,7 +50,7 @@ public class InterfazJuego extends JFrame
 		
 	    menuArchivo.add( itemConectar );
 	    
-		grafica.setFullScreenWindow(this);
+		//grafica.setFullScreenWindow(this);
 		setVisible(true);
 		setUndecorated(true);
 		setSize(800,700);
