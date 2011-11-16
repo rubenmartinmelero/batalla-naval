@@ -117,9 +117,9 @@ public class Servidor extends JFrame {
           return false;
    }
    // colocar código en este método para determinar si terminó el juego
-   public boolean terminoElJuego(DataOutputStream salida)
+   public boolean terminoElJuego(ObjectOutputStream salida)
    {
-	  return false;  // este se deja como un ejercicio
+	  return false;
    }
    public static void main( String args[] )
    {
@@ -130,8 +130,8 @@ public class Servidor extends JFrame {
   // la clase interna privada Jugador administra a cada Jugador como un subproceso
    private class Jugador extends Thread {
       private Socket conexion;
-      private DataInputStream entrada;
-      private DataOutputStream salida;
+      private ObjectInputStream entrada;
+      private ObjectOutputStream salida;
       private int numeroJugador;
       private char marca;
       protected boolean suspendido = true;
@@ -144,8 +144,8 @@ public class Servidor extends JFrame {
          conexion = socket;
          // obtener flujos del  objeto Socket
          try {
-            entrada = new DataInputStream( conexion.getInputStream() );
-            salida = new DataOutputStream( conexion.getOutputStream() );
+            entrada = new ObjectInputStream( conexion.getInputStream() );
+            salida = new ObjectOutputStream( conexion.getOutputStream() );
          }
          // procesar los problemas que pueden ocurrir al obtener los flujos
          catch( IOException excepcionES ) {
