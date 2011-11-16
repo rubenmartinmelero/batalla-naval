@@ -33,7 +33,7 @@ public class Servidor extends JFrame {
       // establecer objeto JTextArea para mostrar mensajes durante la ejecución
       areaSalida = new JTextArea();
       getContentPane().add( areaSalida, BorderLayout.CENTER );
-      areaSalida.setText( "Servidor esperando conexiones\n" );
+      areaSalida.setText( "Servidor esperando conexiones..\n" );
       setSize( 300, 300 );
       setVisible( true );
    } // fin del constructor de ServidorTresEnRaya
@@ -172,7 +172,7 @@ public class Servidor extends JFrame {
          // enviar mensaje al cliente indicando su marca (X o O),
          // procesar mensajes del cliente
          try {
-            System.out.println( "Jugador " + ( numeroJugador ==
+        	 mostrarMensaje( "Jugador " + ( numeroJugador ==
                JUGADOR_X ? MARCA_X : MARCA_Y ) + " conectado\n" );
             salida.writeChar( marca ); // enviar marca del jugador
             // enviar mensaje indicando que hay conexión
