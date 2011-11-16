@@ -1,216 +1,229 @@
-package Logica;
+package Logica ;
 
-import java.io.*;
-import java.net.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.net.*;
+import java.io.*;
 import javax.swing.*;
- 
 public class Servidor extends JFrame {
-   private JTextField campoIntroducir;
-   private JTextArea areaPantalla;
-   private ObjectOutputStream salida;
-   private ObjectInputStream entrada;
+   private char[][] tablero;
+   private JTextArea areaSalida;
+   private Jugador[] jugadores;
    private ServerSocket servidor;
-   private Socket conexion;
-   private int contador = 1;
- 
-   // configurar GUI
+   private int jugadorActual;
+   private final int JUGADOR_X = 0, JUGADOR_Y = 1;
+   private final char MARCA_X = 'X', MARCA_Y = 'Y';
+   private char ganador = ' ';
+   // establecer servidor de tres en raya y GUI para mostrar mensajes
    public Servidor()
    {
-      super( "Servidor" );
- 
-      Container contenedor = getContentPane();
- 
-      // crear campoIntroducir y registrar componente de escucha
-      campoIntroducir = new JTextField();
-      campoIntroducir.setEditable( false );
-      campoIntroducir.addActionListener(
-         new ActionListener() {
- 
-            // enviar mensaje al cliente
-            public void actionPerformed( ActionEvent evento )
-            {
-               enviarDatos( evento.getActionCommand() );
-               campoIntroducir.setText( "" );
-            }
-         }
-      );
- 
-      contenedor.add( campoIntroducir, BorderLayout.NORTH );
- 
-      // crear areaPantalla
-      areaPantalla = new JTextArea();
-      contenedor.add( new JScrollPane( areaPantalla ),
-         BorderLayout.CENTER );
- 
-      setSize( 300, 150 );
-      setVisible( true );
- 
-   } // fin del constructor de Servidor
- 
-   // configurar y ejecutar el servidor
-   public void ejecutarServidor()
-   {
-      // configurar servidor para que reciba conexiones; procesar las conexiones
+      super( "Servidor de conexion Batalla Naval" );
+      tablero = new char[ 10 ][ 10 ];
+      jugadores = new Jugador[ 2 ];
+      jugadorActual = JUGADOR_X;
+      // establecer objeto ServerSocket
       try {
- 
-         // Paso 1: crear un objeto ServerSocket.
-         servidor = new ServerSocket( 12345, 100 );
- 
-         while ( true ) {
- 
-            try {
-               esperarConexion(); // Paso 2: esperar una conexión.
-               obtenerFlujos();        // Paso 3: obtener flujos de entrada y salida.
-               procesarConexion(); // Paso 4: procesar la conexión.
-            }
- 
-            // procesar excepción EOFException cuando el cliente cierre la conexión
-            catch ( EOFException excepcionEOF ) {
-               System.err.println( "El servidor terminó la conexión" );
-            }
- 
-            finally {
-               cerrarConexion();   // Paso 5: cerrar la conexión.
-               ++contador;
-            }
- 
-         } // fin de instrucción while
- 
-      } // fin del bloque try
- 
-      // procesar problemas con E/S
-      catch ( IOException excepcionES ) {
-         excepcionES.printStackTrace();
+         servidor = new ServerSocket( 12345, 2 );
       }
- 
-   } // fin del método ejecutarServidor
- 
-   // esperar que la conexión llegue, después mostrar información de la conexión
-   private void esperarConexion() throws IOException
-   {
-      mostrarMensaje( "Esperando una conexión\n" );
-      conexion = servidor.accept(); // permitir al servidor aceptar la conexión
-      mostrarMensaje( "Conexión " + contador + " recibida de: " +
-         conexion.getInetAddress().getHostName() );
-   }
- 
-   // obtener flujos para enviar y recibir datos
-   private void obtenerFlujos() throws IOException
-   {
-      // establecer flujo de salida para los objetos
-      salida = new ObjectOutputStream( conexion.getOutputStream() );
-      salida.flush(); // vaciar búfer de salida para enviar información de encabezado
- 
-      // establecer flujo de entrada para los objetos
-      entrada = new ObjectInputStream( conexion.getInputStream() );
- 
-      mostrarMensaje( "\nSe recibieron los flujos de E/S\n" );
-   }
- 
-   // procesar la conexión con el cliente
-   private void procesarConexion() throws IOException
-   {
-      // enviar mensaje de conexión exitosa al cliente
-      String mensaje = "Conexión exitosa";
-      enviarDatos( mensaje );
- 
-      // habilitar campoIntroducir para que el usuario del servidor pueda enviar mensajes
-      establecerCampoTextoEditable( true );
- 
-      do { // procesar los mensajes enviados por el cliente
- 
-         // leer el mensaje y mostrarlo en pantalla
-         try {
-            mensaje = ( String ) entrada.readObject();
-            mostrarMensaje( "\n" + mensaje );
-         }
- 
-         // atrapar problemas que pueden ocurrir al tratar de leer del cliente
-         catch ( ClassNotFoundException excepcionClaseNoEncontrada ) {
-            mostrarMensaje( "\nSe recibió un tipo de objeto desconocido" );
-         }
- 
-      } while ( !mensaje.equals( "CLIENTE>>> TERMINAR" ) );
- 
-   } // fin del método procesarConexion
- 
-   // cerrar flujos y socket
-   private void cerrarConexion()
-   {
-      mostrarMensaje( "\nFinalizando la conexión\n" );
-      establecerCampoTextoEditable( false ); // deshabilitar campoIntroducir
- 
-      try {
-         salida.close();
-         entrada.close();
-         conexion.close();
-      }
+      // procesar los problemas que pueden ocurrir al crear el objeto ServerSocket
       catch( IOException excepcionES ) {
          excepcionES.printStackTrace();
+         System.exit( 1 );
       }
-   }
- 
-   // enviar mensaje al cliente
-   private void enviarDatos( String mensaje )
+      // establecer objeto JTextArea para mostrar mensajes durante la ejecución
+      areaSalida = new JTextArea();
+      getContentPane().add( areaSalida, BorderLayout.CENTER );
+      areaSalida.setText( "Servidor esperando conexiones\n" );
+      setSize( 300, 300 );
+      setVisible( true );
+   } // fin del constructor de ServidorTresEnRaya
+   // esperar dos conexiones para poder jugar
+   public void ejecutar()
    {
-      // enviar objeto al cliente
-      try {
-         salida.writeObject( "SERVIDOR>>> " + mensaje );
-         salida.flush();
-         mostrarMensaje( "\nSERVIDOR>>> " + mensaje );
+      // esperar a que se conecte cada cliente
+      for ( int i = 0; i < jugadores.length; i++ ) {
+         // esperar conexión, crear Jugador, iniciar subproceso
+         try {
+            jugadores[ i ] = new Jugador( servidor.accept(), i );
+            jugadores[ i ].start();
+         }
+         // procesar los problemas que pueden ocurrir al recibir la conexión del cliente
+         catch( IOException excepcionES ) {
+            excepcionES.printStackTrace();
+            System.exit( 1 );
+         }
       }
- 
-      // procesar problemas que pueden ocurrir al enviar el objeto
-      catch ( IOException excepcionES ) {
-         areaPantalla.append( "\nError al escribir objeto" );
+      // El Jugador X se suspende hasta que se conecte el Jugador O.
+      // Reactivar ahora al jugador X.
+      synchronized ( jugadores[ JUGADOR_X ] ) {
+         jugadores[ JUGADOR_X ].establecerSuspendido( false );
+         jugadores[ JUGADOR_X ].notify();
       }
-   }
- 
+   }  // fin del método ejecutar
    // método utilitario que es llamado desde otros subprocesos para manipular a
-   // areaPantalla en el subproceso despachador de eventos
+   // areaSalida en el subproceso despachador de eventos
    private void mostrarMensaje( final String mensajeAMostrar )
    {
       // mostrar mensaje del subproceso de ejecución despachador de eventos
       SwingUtilities.invokeLater(
          new Runnable() {  // clase interna para asegurar que la GUI se actualice apropiadamente
- 
-            public void run() // actualiza areaPantalla
+            public void run() // actualiza a areaSalida
             {
-               areaPantalla.append( mensajeAMostrar );
-               areaPantalla.setCaretPosition(
-                  areaPantalla.getText().length() );
+               areaSalida.append( mensajeAMostrar );
+               areaSalida.setCaretPosition(
+                  areaSalida.getText().length() );
             }
- 
          }  // fin de la clase interna
- 
       ); // fin de la llamada a SwingUtilities.invokeLater
    }
- 
-   // método utilitario que es llamado desde otros subprocesos para manipular a
-   // campoIntroducir en el subproceso despachador de eventos
-   private void establecerCampoTextoEditable( final boolean editable )
+   // Determinar si un movimiento es válido. Este método es sincronizado porque
+   // sólo puede realizarse un movimiento a la vez.
+   public synchronized boolean validarYMover( int posicionX,int posicionY, int jugador )
    {
-      // mostrar mensaje del subproceso de ejecución despachador de eventos
-      SwingUtilities.invokeLater(
-         new Runnable() {  // clase interna para asegurar que la GUI se actualice apropiadamente
- 
-            public void run()  // establece la capacidad de modificar a campoIntroducir
-            {
-               campoIntroducir.setEditable( editable );
-            }
- 
-         }  // fin de la clase interna
- 
-      ); // fin de la llamada a SwingUtilities.invokeLater
+      boolean movimientoRealizado = false;
+      // mientras no sea el jugador actual, debe esperar su turno
+      while ( jugador != jugadorActual ) {
+         // esperar su turno
+         try {
+            wait();
+         }
+         // atrapar interrupciones de wait
+         catch( InterruptedException excepcionInterrupcion ) {
+            excepcionInterrupcion.printStackTrace();
+         }
+      }
+      // si la posición no está ocupada, realizar movimiento
+      if ( !estaOcupada( posicionX,posicionY ) ) {
+         // establecer movimiento en arreglo del tablero
+         tablero[ posicionX ][ posicionY ] = jugadorActual == JUGADOR_X ? MARCA_X : MARCA_Y;
+         // cambiar jugador actual
+         jugadorActual = ( jugadorActual + 1 ) % 2;
+         // hacer saber al nuevo jugador actual que ocurrió un movimiento
+         jugadores[ jugadorActual ].elOtroJugadorMovio( posicionX );
+         notify(); // indicar al jugador en espera que continúe
+         // indicar al jugador que hizo el movimiento, que éste fue válido
+         return true;
+      }
+      // indicar al jugador que hizo el movimiento, que éste no fue válido
+      else
+         return false;
+   } // fin del método validarYMover
+   // determinar si la posición está ocupada
+   public boolean estaOcupada( int posicionX , int posicionY )
+   {
+      if ( tablero[ posicionX ][ posicionY ] == MARCA_X || tablero [ posicionX ][ posicionY ] == MARCA_Y )
+          return true;
+      else
+          return false;
    }
- 
- /*  public static void main( String args[] )
+   // colocar código en este método para determinar si terminó el juego
+   public boolean terminoElJuego(DataOutputStream salida)
    {
-      Servidor aplicacion = new Servidor();
+	  return false;  // este se deja como un ejercicio
+   }
+   public static void main( String args[] )
+   {
+	   Servidor aplicacion = new Servidor();
       aplicacion.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-      aplicacion.ejecutarServidor();
-   }*/
- 
-}  // fin de la clase Servidor
+      aplicacion.ejecutar();
+   }
+  // la clase interna privada Jugador administra a cada Jugador como un subproceso
+   private class Jugador extends Thread {
+      private Socket conexion;
+      private DataInputStream entrada;
+      private DataOutputStream salida;
+      private int numeroJugador;
+      private char marca;
+      protected boolean suspendido = true;
+      // establecer subproceso para Jugador
+      public Jugador( Socket socket, int numero )
+      {
+         numeroJugador = numero;
+         // especificar la marca del jugador
+         marca = ( numeroJugador == JUGADOR_X ? MARCA_X : MARCA_Y );
+         conexion = socket;
+         // obtener flujos del  objeto Socket
+         try {
+            entrada = new DataInputStream( conexion.getInputStream() );
+            salida = new DataOutputStream( conexion.getOutputStream() );
+         }
+         // procesar los problemas que pueden ocurrir al obtener los flujos
+         catch( IOException excepcionES ) {
+            excepcionES.printStackTrace();
+            System.exit( 1 );
+         }
+      } // fin del constructor de Jugador
+      // enviar mensaje indicando que el otro jugador hizo un movimiento
+      public void elOtroJugadorMovio( int posicion )
+      {
+         // enviar mensaje indicando el movimiento
+         try {
+            salida.writeUTF( "El oponente hizo un movimiento" );
+            salida.writeInt( posicion );
+         }
+         // procesar los problemas que pueden ocurrir al enviar un mensaje
+         catch ( IOException excepcionES ) {
+            excepcionES.printStackTrace();
+         }
+      }
+      // controlar la ejecución del subproceso
+      public void run()
+      {
+         // enviar mensaje al cliente indicando su marca (X o O),
+         // procesar mensajes del cliente
+         try {
+            System.out.println( "Jugador " + ( numeroJugador ==
+               JUGADOR_X ? MARCA_X : MARCA_Y ) + " conectado\n" );
+            salida.writeChar( marca ); // enviar marca del jugador
+            // enviar mensaje indicando que hay conexión
+            salida.writeUTF( "Jugador " + ( numeroJugador == JUGADOR_X ?
+               "X conectado\n" : "O conectado, por favor espere\n" ) );
+            // si es jugador X, esperar a que llegue el otro jugador
+            if ( marca == MARCA_X ) {
+               salida.writeUTF( "Esperando al otro jugador" );
+               // esperando al jugador O
+               try 
+	               {
+	                  synchronized( this ) 
+	                  	{
+	                     while ( suspendido )
+	                        wait();
+	                  	}
+	               }
+               // procesar interrupciones mientras está en espera
+               catch ( InterruptedException excepcion ) {
+                  excepcion.printStackTrace();
+               }
+               // enviar mensaje indicando que el otro jugador se conectó y
+               // que el jugador X puede realizar un movimiento
+               salida.writeUTF( "El otro jugador se conectó. Le toca a usted mover." );
+            }
+            // mientras el juego no esté terminado
+            while ( ! terminoElJuego(salida) ) {
+               // obtener del cliente la posición del movimiento
+               int posicionX = entrada.readInt();
+               int posicionY = entrada.readInt();
+               // comprobar que sea un movimiento válido
+               if ( validarYMover( posicionX,posicionY, numeroJugador ) ) {
+                  mostrarMensaje( "\nposición: " + posicionX );
+                  salida.writeUTF( "Movimiento válido." );
+               }
+               else
+                  salida.writeUTF( "Movimiento inválido, intente otra vez" );
+            }
+            salida.writeUTF( "Gano el jugador " + ganador);
+            conexion.close(); // cerrar conexión con el cliente
+         } // fin del bloque try
+         // procesar los problemas que pueden ocurrir al comunicarse con el cliente
+         catch( IOException excepcionES ) {
+            excepcionES.printStackTrace();
+            System.exit( 1 );
+         }
+      } // fin del método run
+      // establecer si el subproceso está suspendido o no
+      public void establecerSuspendido( boolean estado )
+      {
+         suspendido = estado;
+      }
+   } // fin de la clase Jugador
+} // fin de la clase ServidorTresEnRaya
