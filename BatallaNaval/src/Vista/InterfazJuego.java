@@ -1,51 +1,70 @@
 package Vista;
 
-
-import Logica.Servidor;
-
 import java.net.*;
 import java.io.*;
 import java.awt.* ;
+
 import javax.swing.* ;
+import javax.swing.border.TitledBorder;
+
 import java.awt.event.* ;
 
 public class InterfazJuego extends JFrame
 	{
+	private final static int TAMANO_VECTOR = 10 ;
+	
+	private TableroAtaques tableroAtaques = new TableroAtaques();
+	
+	private EventoAtaque eventoAtaque ;
+
+	private JPanel panelJuego = new JPanel() ;
+	private JPanel panelEstado = new JPanel();
+	private JTextArea areaMensajes = new JTextArea(10,50);
+	private JScrollPane barraDesplazadora = new JScrollPane(areaMensajes);
+	
+	private JButton casillas[][] = new JButton[TAMANO_VECTOR][TAMANO_VECTOR] ;
+	private GridBagLayout capaGeneral ;
 	private GridBagConstraints configuracionCapa = new GridBagConstraints();
-	private Image img;
-	private JMenu menuArchivo,menuAyuda ;
+
+	private JLabel etiquetasLetras[] = new JLabel[TAMANO_VECTOR];
+	private JLabel etiquetasNumeros[] = new JLabel[TAMANO_VECTOR];
+	
+	private JMenu menuArchivo ;
 	private JMenuBar barra ;
 	private JMenuItem itemConectar;
 	
 	private ObjectOutputStream salida;
 	private ObjectInputStream entrada;
 	private String mensaje = "";
-	private String servidorChat;
+	private String servidorJuego;
 	private Socket cliente;
 
 	private String host ;
-	
 	private EventoConexion eventoConexion = new EventoConexion() ;
 	
-	static GraphicsDevice grafica = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+	private TitledBorder tituloTableroJuego ;
+
+	private static final String nombreLetras[] = {"A","B","C","D","E","F","G","H","I","J"};
+	private static final String nombreNumeros[] = {"1","2","3","4","5","6","7","8","9","10"};
+	
+	private int posicionX, posicionY ;
+	
+	//static GraphicsDevice grafica = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 	
 	public InterfazJuego()
 		{
 		super(" Panel Principal ") ;
 		Container contenedor = getContentPane();
-		GridLayout areaInterfaz = new GridLayout(2,1,1,1);
+		GridLayout areaInterfaz = new GridLayout(2,2,1,1);
 		contenedor.setLayout(areaInterfaz);
 		
-		TableroJuego tableroJuego = new TableroJuego() ;
-		TableroAtaques tableroAtaques = new TableroAtaques() ;
+		PanelJuego();
+		contenedor.add(tableroAtaques);	
 		
-		contenedor.add(tableroAtaques);		
-		contenedor.add(tableroJuego);
-		
-		JMenu menuArchivo = new JMenu( "Archivo" );
+		menuArchivo = new JMenu( "Archivo" );
 		menuArchivo.setMnemonic( 'A' );
   
-		JMenuBar barra = new JMenuBar();
+		barra = new JMenuBar();
 		setJMenuBar( barra );
 		barra.add( menuArchivo ); 
 		
@@ -53,30 +72,149 @@ public class InterfazJuego extends JFrame
 		itemConectar.setMnemonic( 'C' );
 		itemConectar.addActionListener(eventoConexion);
 		
+		areaMensajes.setEnabled(false);
 	    menuArchivo.add( itemConectar );
+	    
+	    areaMensajes.setDisabledTextColor(Color.RED);
+	    areaMensajes.setText("Pendiente establecer la conexion con el servidor");
+	    
+	    panelEstado.add(barraDesplazadora);
+	    contenedor.add(panelEstado);
 	    
 		//grafica.setFullScreenWindow(this);
 		setVisible(true);
 		//setUndecorated(true);
-		setSize(800,700);
+		setSize(900,900);
+
 		}
+	
+
+	public int getPosicionX() {
+		return posicionX;
+	}
+
+
+	public void setPosicionX(int posicionX) {
+		this.posicionX = posicionX;
+	}
+
+
+	public int getPosicionY() {
+		return posicionY;
+	}
+
+
+	public void setPosicionY(int posicionY) {
+		this.posicionY = posicionY;
+	}
+
+
+	public void PanelJuego()
+		{
+		capaGeneral = new GridBagLayout();
+		panelJuego.setLayout(capaGeneral);	
+		panelTablero();
+		panelLetras();
+		panelNumeros();	
+		
+		tituloTableroJuego = BorderFactory.createTitledBorder( " Panel de Juego ");
+		tituloTableroJuego.setTitleJustification(TitledBorder.LEFT);
+
+		panelJuego.setBorder(tituloTableroJuego);
+
+		panelJuego.setBorder(tituloTableroJuego);
+		add(panelJuego);
+		}
+	
+	public void panelLetras()
+		{
+			for (int i = 0; i < TAMANO_VECTOR; i++) 
+			{
+				etiquetasLetras[i] = new JLabel(nombreLetras[i]) ;
+				agregarComponente(etiquetasLetras[i],0,(i+1),1,1);
+			}
+		}
+
+	public void panelNumeros()
+	{
+		for (int i = 0; i < TAMANO_VECTOR; i++) 
+		{
+			etiquetasNumeros[i] = new JLabel(nombreNumeros[i]);
+			agregarComponente(etiquetasNumeros[i],(i+1),0,1,1);
+		}
+	}
+
+	public void panelTablero()
+	{
+		for (int i = 0; i < TAMANO_VECTOR; i++) 
+		{	
+			for (int j = 0; j < TAMANO_VECTOR; j++) 
+			{
+				casillas[i][j] = new JButton(" ") ;
+				casillas[i][j].setFocusPainted(false);
+				casillas[i][j].setContentAreaFilled(false);
+
+
+				eventoAtaque = new EventoAtaque(i,j) ;
+				casillas[i][j].addActionListener(eventoAtaque);
+
+				agregarComponente(casillas[i][j],(i+1),(j+1),1,1);
+			}
+		}
+
+	}
+	public void agregarComponente(Component componente,int x, int y, int ancho, int alto)
+	{
+		configuracionCapa.gridx = x ;
+		configuracionCapa.gridy = y ;
+		configuracionCapa.gridwidth = ancho ;
+		configuracionCapa.gridheight = alto ;
+		configuracionCapa.anchor = GridBagConstraints.LINE_START;  
+		capaGeneral.setConstraints(componente, configuracionCapa);
+		panelJuego.add(componente);
+	}
+
+
+	public void inactivarBoton(int x, int y)
+	{
+		this.casillas[x][y].setBackground(Color.BLACK) ;
+		casillas[x][y].setContentAreaFilled(true);
+		casillas[x][y].setEnabled(false);
+
+	}
+	
+	private class EventoAtaque implements ActionListener
+	{
+		private int x , y ;
+
+		public EventoAtaque(int x , int y)
+		{
+			this.x = x ;
+			this.y = y ;
+		}
+
+		public void actionPerformed(ActionEvent evento) 
+		{
+			inactivarBoton(x,y);
+			enviarDatos(x,y);			
+		}
+	}	
 	
 	public void establecerHost(String host)
 		{
 		this.host = host ;
 		}
-	
-	
 	public void ejecutarCliente()
 		{
-		servidorChat = host; // establecer el servidor al que se va a conectar este cliente
+		servidorJuego = host; // establecer el servidor al que se va a conectar este cliente
 		try 
 			{
 			conectarAServidor();
 			obtenerFlujos();
+			procesarConexion();
 			}
 		catch ( EOFException excepcionEOF ) {
-	         System.err.println( "El cliente termino la conexión" );
+			areaMensajes.append( "El cliente termino la conexión" );
 	      }
 	 
 	      // procesar los problemas que pueden ocurrir al comunicarse con el servidor
@@ -91,20 +229,19 @@ public class InterfazJuego extends JFrame
 	
 	private void conectarAServidor() throws IOException
 	   {
-	      System.out.println( "Intentando realizar conexión\n" );
+		areaMensajes.append( "Intentando realizar conexión\n" );
 	 
 	      // crear Socket para realizar la conexión con el servidor
-	      cliente = new Socket( InetAddress.getByName( servidorChat ), 12345 );
-	 
-	      // mostrar la información de la conexión
-	      System.out.println( "Conectado a: " +
-	         cliente.getInetAddress().getHostName() );
+	    cliente = new Socket( InetAddress.getByName( servidorJuego ), 12345 );
+	      
+	    areaMensajes.setDisabledTextColor(Color.black);
+       	areaMensajes.setText("Conexion realizada con el servidor");
+        areaMensajes.append( "\nConectado a: " + cliente.getInetAddress().getHostName());
 	   }
 	 
 	   // obtener flujos para enviar y recibir datos
 	   private void obtenerFlujos() throws IOException
 	   {
-	      // establecer flujo de salida para los objetos
 	      salida = new ObjectOutputStream( cliente.getOutputStream() );
 	      salida.flush(); // vacíar búfer de salida para enviar información de encabezado
 	 
@@ -112,41 +249,41 @@ public class InterfazJuego extends JFrame
 	      entrada = new ObjectInputStream( cliente.getInputStream() );
 	 
 	      System.out.println( "\nSe recibieron los flujos de E/S\n" );
+	      try {
+			System.out.println(entrada.readObject());
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	   }
 	 
 	   // procesar la conexión con el servidor
 	   private void procesarConexion() throws IOException
 	   {
-	      // habilitar campoIntroducir para que el usuario del cliente pueda enviar mensajes
-
-	 
-	      do { // procesar mensajes enviados del servidor
-	 
-	         // leer mensaje y mostrarlo en pantalla
-	         try {
-	            mensaje = ( String ) entrada.readObject();
-	            System.out.println( "\n" + mensaje );
-	         }
-	 
-	         // atrapar los problemas que pueden ocurrir al leer del servidor
-	         catch ( ClassNotFoundException excepcionClaseNoEncontrada ) {
-	            System.out.println( "\nSe recibió un objeto de tipo desconocido" );
-	         }
-	 
-	      } while ( !mensaje.equals( "SERVIDOR>>> TERMINAR" ) );
 	 
 	   } // fin del método procesarConexion
 	
-	  
+	   private void enviarDatos(int x, int y)
+	   {		     
+	    try 
+	    	{
+	    	salida.writeObject(x+","+y) ;
+	    	salida.flush();
+	    	}
+	    catch (IOException e) 
+	    	{
+			e.printStackTrace();
+	    	}
+	   }
+	   
 	private class EventoConexion implements ActionListener
 		{
 			public void actionPerformed(ActionEvent arg0) 
 			{
-			host = JOptionPane.showInputDialog("Ingrese el numero de la direccion ip a la cual desea conectarse") ;	
+			host = JOptionPane.showInputDialog("Ingrese el numero de la direccion ip a la cual desea conectarse","127.0.0.1") ;	
 			
 			establecerHost(host);
-			ejecutarCliente();
-			
+			ejecutarCliente();			
 			}		
 		}
 	

@@ -11,7 +11,6 @@ public class TableroJuego extends JPanel
 	private final static int TAMANO_VECTOR = 10 ;
 
 	private EventoAtaque eventoAtaque ;
-	private AccionSeleccion accionBarcos = new AccionSeleccion() ;
 
 	private JPanel panelJuego = new JPanel() ;
 	private JPanel panelHerramientas = new JPanel();
@@ -26,8 +25,9 @@ public class TableroJuego extends JPanel
 	private Icon barco1,barco2,barco3,barco4 ;
 
 	private JLabel botonBarco1,botonBarco2,botonBarco3,botonBarco4 ;
-
-
+	
+	private int posicionX , posicionY ;
+	
 	private static final String nombreLetras[] = {"A","B","C","D","E","F","G","H","I","J"};
 	private static final String nombreNumeros[] = {"1","2","3","4","5","6","7","8","9","10"};
 
@@ -52,7 +52,7 @@ public class TableroJuego extends JPanel
 	
 		add(panelJuego);
 	}
-	
+	/*
 	public void panelHerramientas()
 	{
 		panelHerramientas.setLayout(new GridLayout(4,2,10,10));
@@ -79,7 +79,26 @@ public class TableroJuego extends JPanel
 		panelHerramientas.setBorder(tituloHerramientas);
 		add(panelHerramientas);
 	}
+	*/
+	public int getPosicionX() {
+		return posicionX;
+	}
 
+
+	public void setPosicionX(int posicionX) {
+		this.posicionX = posicionX;
+	}
+
+
+	public int getPosicionY() {
+		return posicionY;
+	}
+
+
+	public void setPosicionY(int posicionY) {
+		this.posicionY = posicionY;
+	}
+	
 	public void panelLetras()
 	{
 		for (int i = 0; i < TAMANO_VECTOR; i++) 
@@ -134,6 +153,9 @@ public class TableroJuego extends JPanel
 		this.casillas[x][y].setBackground(Color.BLACK) ;
 		casillas[x][y].setContentAreaFilled(true);
 		casillas[x][y].setEnabled(false);
+		
+		setPosicionX(x) ;
+		setPosicionY(y) ;
 	}
 
 	private class EventoAtaque implements ActionListener
@@ -150,28 +172,5 @@ public class TableroJuego extends JPanel
 		{
 			inactivarBoton(x,y);
 		}
-
 	}
-
-	private class AccionSeleccion implements ActionListener
-	{
-
-		@Override
-		public void actionPerformed(ActionEvent arg0) {
-			// TODO Auto-generated method stub
-			
-		}
-		
-	}
-	
-	/*private class AccionesObjetos extends MouseMotionAdapter
-	{
-		public void mouseDragged(MouseEvent e) 
-		{
-			System.out.println("mover") ;
-			Component c = e.getComponent();
-			c.setLocation( c.getX()+e.getX(), c.getY()+e.getY() );
-			repaint();
-		}
-	}*/
 }
